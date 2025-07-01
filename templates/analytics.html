@@ -1,0 +1,182 @@
+
+{% extends 'layout.html' %}
+{% block st %}Dashboard{% endblock %}
+{% block content %}
+  <title>Expense Analytics</title>
+
+  <!-- Filter Form -->
+  <form method="get" action="{{ url_for('analytics') }}" class="row g-3 align-items-end mb-4">
+    <div class="col-auto">
+      <label for="from_date" class="form-label">From</label>
+      <input type="date" id="from_date" name="from_date" class="form-control" value="{{ from_date }}">
+    </div>
+    <div class="col-auto">
+      <label for="to_date" class="form-label">To</label>
+      <input type="date" id="to_date" name="to_date" class="form-control" value="{{ to_date }}">
+    </div>
+    <div class="col-auto">
+      <label for="category" class="form-label">Category</label>
+      <select id="category" name="category" class="form-select">
+        {% for cat in categories %}
+          <option value="{{ cat }}" {% if cat == selected_category %}selected{% endif %}>{{ cat }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-auto">
+      <button type="submit" class="btn btn-primary">Apply</button>
+    </div>
+    <div class="col-auto">
+      <a href="{{ url_for('analytics') }}" class="btn btn-secondary">Clear</a>
+    </div>
+  </form>
+
+  <div class="row g-4">
+
+  <!-- Pie Chart Column -->
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-body" style="height: 300px;>
+        <h5 class="card-title">Category Breakdown</h5>
+        {% if chart_data %}
+          <canvas id="categoryPieChart" style="max-height: 100%;"></canvas>
+        {% else %}
+          <p class="text-muted">No category data for this period.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Bar Chart Column -->
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-body"  style="height: 300px;>
+        <h5 class="card-title">Daily Expenses</h5>
+        {% if bar_data %}
+          <canvas id="dailyBarChart" style="max-height: 100%;"></canvas>
+        {% else %}
+          <p class="text-muted">No daily data for this period.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <!----trend line-->
+  <form method="get" class="d-inline">
+  <input type="hidden" name="from_date" value="{{ from_date }}">
+  <input type="hidden" name="to_date" value="{{ to_date }}">
+  <input type="hidden" name="category" value="{{ selected_category }}">
+  <button name="group_by" value="monthly" class="btn btn-sm {% if group_by == 'monthly' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+    Monthly
+  </button>
+  <button name="group_by" value="weekly" class="btn btn-sm {% if group_by == 'weekly' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+    Weekly
+  </button>
+</form>
+  <div class="card mt-2" >
+  <div class="card-body" style="height: 300px;">
+    <h5 class="card-title">{{ group_by | capitalize }} Expense Trend</h5>
+    {% if time_data %}
+      <canvas id="timeSeriesChart" style="max-height: 100%;"></canvas>
+    {% else %}
+      <p class="text-muted">No data available.</p>
+    {% endif %}
+  </div>
+</div>
+
+
+</div>
+
+{% if chart_data %}
+<script>
+  const pieCtx = document.getElementById('categoryPieChart').getContext('2d');
+  new Chart(pieCtx, {
+    type: 'pie',
+    data: {
+      labels: {{ chart_labels | tojson }},
+      datasets: [{
+        data: {{ chart_data | tojson }},
+        backgroundColor: [
+          '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'
+        ]
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'right' } }
+    }
+  });
+</script>
+{% endif %}
+
+{% if bar_data %}
+<script>
+  const barCtx = document.getElementById('dailyBarChart').getContext('2d');
+  new Chart(barCtx, {
+    type: 'bar',
+    data: {
+      labels: {{ bar_labels | tojson }},
+      datasets: [{
+        label: 'Amount',
+        data: {{ bar_data | tojson }},
+        backgroundColor: '#36A2EB'
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        x: { title: { display: true, text: 'Date' }},
+        y: { title: { display: true, text: 'Amount (₹)' }}
+      }
+    }
+  });
+</script>
+{% endif %}
+
+{% if time_data %}
+<script>
+  const tsCtx = document.getElementById('timeSeriesChart').getContext('2d');
+  new Chart(tsCtx, {
+    type: 'line',
+    data: {
+      labels: {{ time_labels | tojson }},
+      datasets: [{
+        label: '{{ group_by | capitalize }} Total',
+        data: {{ time_data | tojson }},
+        borderColor: '#4BC0C0',
+        backgroundColor: 'rgba(75,192,192,0.2)',
+        fill: true,
+        tension: 0.4
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        x: { title: { display: true, text: '{{ "Week" if group_by == "weekly" else "Month" }}' }},
+        y: { title: { display: true, text: 'Amount (₹)' }}
+      }
+    }
+  });
+</script>
+{% endif %}
+
+
+<div class="alert alert-info mt-3">
+   <div class="d-flex justify-content-between">
+  💰 <strong>Total Expenses:</strong> ₹{{ total_amount | default(0.0)| round(2) }}
+   <strong>Average Expense Per Day:</strong> ₹{{ average_amount | default(0.0) | round(2) }}
+   </div>
+</div>
+
+  <a href="{{ url_for('index') }}" class="btn btn-outline-primary mt-4">← Back Home</a>
+</div>
+<!-- This is the analytics template for displaying expense breakdown by category -->
+<!-- It includes a filter form for date range and category selection -->    
+<!-- and a pie chart to visualize the data -->
+<!-- The chart is rendered using Chart.js and displays the total expenses per category -->  
+<!-- The template also provides a link to return to the main expense tracker page -->
+<!-- The chart data is passed from the Flask backend as JSON for rendering -->
+<!-- The template uses Bootstrap for styling and layout -->
+<!-- The filter form allows users to specify a date range and category for the analytics -->
+<!-- The chart displays the breakdown of expenses by category for the selected period -->
+<!-- The template is designed to be responsive and user-friendly -->
+<!-- The chart is only displayed if there is data available for the selected filters -->
+{% endblock %}

@@ -1,0 +1,92 @@
+{% extends 'layout.html' %}
+{% block st %}Home{% endblock %}
+{% block content %}
+<a href="{{ url_for('add')}}" class="btn btn-primary mb-3">Add Expense</a>
+<a href="{{ url_for('analytics') }}" class="btn btn-outline-secondary mb-3">
+  View Analytics
+</a>
+
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+    <div class="alert alert-warning">
+      {% for message in messages %}
+        {{ message }}
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
+<div class="mb-3">
+  <strong>Quick Filters:</strong>
+  <a href="/?quick=last7" class="btn btn-outline-primary btn-sm">Last 7 Days</a>
+  <a href="/?quick=thismonth" class="btn btn-outline-success btn-sm">This Month</a>
+  <a href="/" class="btn btn-outline-secondary btn-sm">Clear</a>
+</div>
+
+<form method="get" class="row g-3 mb-4">
+    <div class="col-md-3">
+        <label>From Date</label>
+        <input type="date" name="from_date" class="form-control" value="{{ from_date }}">
+
+    </div>
+    <div class="col-md-3">
+        <label>To Date</label>
+        <input type="date" name="to_date" class="form-control" value="{{ to_date }}">
+    </div>
+    <div class="col-md-3">
+        <label>Category (optional)</label>
+        <select name="filter" class="form-control">
+            <option value="">-- All --</option>
+            {% for cat in categories %}
+            <option value="{{ cat }}" {% if cat == filter %}selected{% endif %}>{{ cat }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-3 d-flex align-items-end">
+        <button class="btn btn-success w-100">Apply Filter</button>
+    </div>
+</form>
+
+<p><strong>Showing expenses from:</strong>
+    {{ from_date.strftime('%Y-%m-%d') }} to {{ to_date.strftime('%Y-%m-%d') }}
+    {% if filter %} | <strong>Category:</strong> {{ filter }} {% endif %}
+</p>
+
+<div class="alert alert-info">
+  <div class="row g-2">
+    <div class="col-md-4">
+      💰<strong>Total Expenses:</strong> ₹{{ total_amount | default(0.0) | round(2) }}
+    </div>
+    <div class="col-md-4">
+      💰<strong>Average Expense Per Day:</strong> ₹{{ average_amount | default(0.0) | round(2) }}
+    </div>
+    
+      </div>
+</div>
+
+<table class="table table-bordered">
+    <tr><th>Date</th><th>Amount</th><th>Category</th><th>Note</th></tr>
+    {% for exp in expenses %}
+    <tr>
+        <td>{{ exp.date.strftime('%Y-%m-%d') }}</td>
+        <td>₹{{ exp.amount }}</td>
+        <td>{{ exp.category }}</td>
+        <td>{{ exp.note }}</td>
+    </tr>
+    {% endfor %}
+</table>
+
+<a href="{{ url_for('export_csv', from_date=from_date, to_date=to_date, filter=filter) }}" class="btn btn-outline-info mb-3">Export to CSV</a>
+
+<form action="{{ url_for('import_csv') }}" method="post" enctype="multipart/form-data" class="mb-4">
+  <div class="row g-2 align-items-end">
+    <div class="col-auto">
+      <input type="file" name="file" class="form-control" required>
+    </div>
+    <div class="col-auto">
+      <button type="submit" class="btn btn-outline-primary">Import CSV</button>
+    </div>
+  </div>
+</form>
+
+{% endblock %}
+
